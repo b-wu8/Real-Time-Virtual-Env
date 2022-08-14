@@ -1,0 +1,120 @@
+syntax = "proto3";
+package ADS; // namespace
+
+enum Type { // request type
+    UNKNOWN = 0; // default unprocessed type
+    TEST = 1;
+    SYN = 2;
+    FIN = 3;
+    CONTINUOUS = 4;
+    RPC = 5;
+    HEARTBEAT = 6;
+    WORLD = 7; // all gameobjects, sent from server
+    PRESENCE = 8; // which players are in the session
+    STATISTICS = 9;
+}
+
+message Message {
+    int32 sender_id = 1; // for both servers and clients
+    Type type = 2;
+    bytes data = 3; // encoded reponse or request
+}
+
+message SynRequest {
+    string player_name = 1;  // Proposed player name
+    string server_name = 2;  // Server name (WAS, ATL, LAX, etc)
+    string lobby_name = 3;  // lobby to join
+    int32 ingest_server_id = 4;  // 0 if unknown / non-zero if known
+}
+
+message SynResponse {
+    string player_name = 1;  // echoing player name (altered if naming conflict)
+    string lobby_name = 2;  // empty if player is not currently in a lobby
+    int32 client_id = 3;  // Assigning client_id
+    int32 server_tick_delay_ms = 4;  // Server tick delay in ms
+    int32 ingest_server_id = 5;  // Assigning ingest_server_id
+    string ingest_server_ip = 6;  // ip of ingest server
+    int32 ingest_server_port = 7;  // port of ingest server
+    int32 max_players_per_lobby = 8;  // Modulus lets colors be set
+}
+
+message ContinuousRequest {
+    ContinuousData data = 1;
+}
+
+// No response to Continuous Request
+
+message RpcRequest {
+    int32 initiator_id = 1;
+    string rpc = 2;  // claim__item_name or HAPTICS or ping__<pingtime_us> or rand__<random> or stats__<start>__<stop>__<random>
+}
+
+// RpcRequest is just forwarded to all parties (no response type)
+
+// No WorldRequest (sent every tick)
+
+message WorldResponse {
+    message Avatar {
+       int32 player_id = 1;
+       ContinuousData data = 2;
+    }
+    message OwnedVec3 {
+        int32 owner_id = 1;
+        string item_name = 2;
+        Vector3 position = 3;
+    }
+    repeated Avatar avatars = 1;
+    repeated OwnedVec3 items = 2;
+}
+
+// Sent when someone leaves (currently only happens on timeout)
+
+message PresenceResponse {
+    message Player {
+        string player_name = 1;
+        int32 player_id = 2;
+        string datacenter = 3;
+    }
+    string lobby_name = 1;
+    repeated Player player_infos = 2; 
+}
+
+// Only sent to one player ( whoever sent rand__<random> )
+message StatisticsResponse {
+    uint32 hash = 1;  // hash of rand__<random> message
+    string datacenter = 2;
+    uint64 recv_us = 3;  // Based on distance from source
+    uint64 handle_us = 4;  // 65 ms
+}
+
+message Vector2 {
+    float x = 1;
+    float y = 2;
+}
+
+message Vector3 {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+}
+
+message Quaternion {
+    float x = 1;
+    float y = 2;
+    float z = 3;
+    float w = 4;
+}
+
+message Transform {
+    Vector3 position = 1;
+    Quaternion rotation = 2;
+}
+
+message ContinuousData {
+    Transform headset = 1;
+    Transform left_controller = 2;
+    Transform right_controller = 3;
+    Vector2 left_joystick = 4;
+    Vector2 right_joystick = 5;
+    Vector3 player_offset = 6;
+}
